@@ -1,1 +1,1 @@
-{"command": "request", "content": {"1": {"history": [[17, 18], []]}}, "display": {"landlord": 0, "bid": [0, 0, 2], "errored": [null, null, null], "event": {"player": 0, "action": []}}}
+{"command": "finish", "content": {"0": 3, "1": 3, "2": -6}, "display": {"event": {"player": 0, "action": [50]}, "0": 3, "1": 3, "2": -6, "landlord": 2}}
