@@ -525,14 +525,14 @@ namespace BotzoneIO{
         {
             for(int i = 1; i <= 4 ; ++i) {
                 for(int d = 1 ; d <= 12 ; ++d) {
-                    min_remain_card[i][d] = 16;
+                    min_remain_card[i][d] = 20;
                     max_remain_card[i][d] = 0;
                     if(i *d > 20) continue;
                     for(int l = 0 ; l < 16 ; ++l) {
                         if(l + d > 16) break;
                         bool f = 1;
                         for(int t = l ; t < l + d ; ++t) {
-                            if(remained_cnt[t] < d) {
+                            if(remained_cnt[t] < i) {
                                 f = 0;break;
                             }
                         }
@@ -598,12 +598,32 @@ namespace BIDDING{
 }
 
 void print_cards_vector(std::vector<int>cards, char *title = ""){
-    printf("%s: [", title);
+    std::cerr << title << ": [";
     for(int c: cards)
-	putchar(letter[getid(c)]);
-    puts("]");
+	   std::cerr<< letter[getid(c)];
+    std::cerr << "]" << std::endl;
 }
-
+void print_combo(Combo c) {
+    std::cerr << "[";
+    for(int i = c.l ; i <= c.r ; ++i) {
+        for(int j = 1 ; j <= c.k ; ++j) {
+            std::cerr << letter[i];
+        }
+    }
+    for(auto t : c.wings) {
+        for(int i = 1 ; i <= c.w ; ++i) {
+            std::cerr << letter[t];
+        }
+    }
+    std::cerr << "]";
+}
+void print_combo_vector(std::vector<Combo> pattern) {
+    std::cerr << "this pattern is" << std::endl;
+    for(auto t : pattern) {
+        print_combo(t);
+    }
+    std::cerr << std::endl;
+}
 namespace PLAYING{
 
     int can_follow(Combo a,Combo b) {
@@ -619,46 +639,73 @@ namespace PLAYING{
             else return 0;
         }
     }
-    double use_first_hand(const Combo &a) {
+    double clamp(double x,double min_lim,double max_lim) {
+        return std::min(std::max(x,min_lim),max_lim);
+    }
+    double use_first_hand(Combo &a) {
+        if(a.boom_type() > 0) return 0.0;
         if(a.card_num() > max_remain_cnt) return 1.0;
-        if(a.k == 4) return 0.999;
+
+        if(a.k == 4) return 1.0;
         int k = a.k,l = a.r - a.l + 1;
+        if(max_remain_card[k][l] < min_remain_card[k][l]) return 1.0;
+
         double min_val;
         double max_val = 1.0;
-        if(k == 3) min_val = 0.3;
-        else min_val = 0.01;
-        if(a.l <= min_remain_card[k][l]) return max_val;
-        if(max_remain_card[k][l] > min_remain_card[k][l]) {
-            if(a.l > max_remain_card[k][l]) {
-                return min_val;
-            }
-            else {
-                double a_pow = (min_val - max_val) / pow(max_remain_card[k][l] - min_remain_card[k][l],2);
-                return max_val + a_pow * pow(a.l - min_remain_card[k][l],2);
-            }
+        if(k >= 3 && l >= 2) max_val = max_val * l / 1.5;
+        if(l >= 7) {
+            max_val = max_val * (l  - 5) / 1.5;
         }
+        if(k >= 3) min_val = 0.3;
+        else min_val = 0.1;
 
-        return max_val;
+        min_val = min_val * exp(-(max_remain_card[k][l] - min_remain_card[k][l] + 1));
+
+        double res;
+
+        if(a.l <= min_remain_card[k][l]) res = max_val;
+        else if(a.l >= max_remain_card[k][l]) res = min_val;
+        else if(max_remain_card[k][l] > min_remain_card[k][l]) {
+            double a_pow = (min_val - max_val) / pow(max_remain_card[k][l] - min_remain_card[k][l],2);
+            res = max_val + a_pow * pow(a.l - min_remain_card[k][l],2);
+        }
+        else res = max_val;
+        return clamp(res,0,1);
     }
-    double get_first_hand(const Combo &a) {
+    double get_first_hand(Combo &a) {
+        if(a.boom_type() > 0) return 1.0;
         if(a.card_num() > max_remain_cnt) return 1.0;
         int k = a.k,l = a.r - a.l + 1;
+
+        if(max_remain_card[k][l] < min_remain_card[k][l]) return 1.0;
+
         double max_val = 1;
         double min_val = 0;
         if(k == 4) min_val = 0.5;
-        else if(k == 3) min_val = 0.1;
+        else if(k == 3) min_val = 0.3;
         else min_val = 0.0;
-        if(a.l >= max_remain_card[k][l]) return max_val;
-        if(max_remain_card[k][l] > min_remain_card[k][l]) {
-            if(a.l < min_remain_card[k][l]) return min_val;
-            else {
-                double a_pow = (max_val - min_val) / pow(max_remain_card[k][l] - min_remain_card[k][l],2);
-                return min_val + a_pow * pow(a.l - min_remain_card[k][l],2);
-            }
+        if(k >= 3 && l >= 2) {
+            min_val = min_val * l / 1.7;
+        }
+        if(k == 2 && l >= 3) min_val = 0.22;
+        if(l >= 5) {
+            min_val = 0.2;
+        }
+        if(l >= 7) {
+            min_val = min_val * (l - 5) / 1.5;
         }
 
-        return max_val;
+        double res;
 
+        if(a.l >= max_remain_card[k][l]) res = max_val;
+        else if(a.l <= min_remain_card[k][l]) res = min_val / (max_remain_card[k][l] - min_remain_card[k][l] + 1);
+        else if(max_remain_card[k][l] > min_remain_card[k][l]) {
+            double a_pow = (max_val - min_val) / pow(max_remain_card[k][l] - min_remain_card[k][l],2);
+            res = min_val + a_pow * pow(a.l - min_remain_card[k][l],2);
+        }
+        else res = max_val;
+
+        res = clamp(res,0,1);
     }
     double calc_first_hand(Combo lastCombo, std::vector<Combo> partition) {
         double res = 0.0,max_boost = 0.0;
@@ -693,7 +740,11 @@ namespace PLAYING{
         }
     }
     Combo solve(Combo lastCombo, Hands _H){
+
         Hands H = _H;
+        #ifdef zusuyu
+
+        #endif
         H.Try2Partition();
         std::vector<Combo> best;bool can_play = 0;double best_eval = -1e9;
         std::vector<Combo> can_play_best;double can_play_eval = -1e9;
@@ -719,6 +770,13 @@ namespace PLAYING{
                 }
             }
         }
+        #ifdef zusuyu
+        std::cerr << "best_eval: " <<  best_eval << std::endl;
+        std::cerr << "can_play is: " << can_play << std::endl;
+        print_combo_vector(best);
+        std::cerr << "can_play_eval:" << can_play_eval << std::endl;
+        print_combo_vector(can_play_best);
+        #endif
         bool can_play_boom = 0;
         if(!can_play) {
             if(best_eval > 0.0 || get_p() < exp(best_eval) + 0.1) {
@@ -750,10 +808,21 @@ namespace PLAYING{
                 double use_first = -1.0,get_first = 0.0;
                 for(auto one_combo : best) {
                     double u = use_first_hand(one_combo),g = get_first_hand(one_combo);
-                    if(u > use_first || (u == use_first && g > get_first)) {
+                    #ifdef zusuyu
+                    print_combo(one_combo);std::cerr << std::endl;
+                    std::cerr << "use first hand: " << u << std::endl;
+                    std::cerr << "get first hand:" << g << std::endl;
+                    #endif
+                    if(u > use_first || (u >= use_first - 0.01 && g > get_first) ||
+                    (u >= use_first - 0.01 && g >= get_first && one_combo.l < chu.l)) {
                         use_first = u;
                         get_first = g;
                         chu = one_combo;
+                        #ifdef zusuyu
+                        std::cerr << "change combo to" << std::endl;
+                        print_combo(chu);
+                        std::cerr << std::endl;
+                        #endif
                     }
                 }
             }
@@ -782,12 +851,21 @@ int _main(){
     }
     else{ // PLAYING
         std::vector<int>curMyHands;
+
         for(int x: MyHand) {
             curMyHands.push_back(x);
+
         }
+        #ifdef zusuyu
+        std::cerr << "Player" << MyPosition << std::endl;
+        print_cards_vector(curMyHands);
+        #endif
         Combo one_combo = PLAYING::solve(lastCombo, Hands(curMyHands));
         std::vector<int> output;
         one_combo.turn_to_card(curMyHands,output);
+        #ifdef zusuyu
+        print_cards_vector(output);
+        #endif
         BotzoneIO::play(output);
     }
     return 0;
