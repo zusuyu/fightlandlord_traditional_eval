@@ -71,7 +71,7 @@ public:
         else return 0;
     }
     bool is_same_pattern(const Combo &b) {
-        return k == b.k && l == b.l && r == b.r && w == b.w;
+        return k == b.k && r - l == b.r - b.l && w == b.w;
     }
     int card_num() const {
         return k * (r - l + 1) +  w * k;
@@ -95,7 +95,7 @@ public:
         putchar(' ');
         return res;
     }
-    void turn_to_card(std::vector<int> &possession,std::vector<int> dest) {
+    void turn_to_card(std::vector<int> &possession,std::vector<int> &dest) {
         static int tmp[16];
         memset(tmp,0,sizeof(tmp));
         for(int i = l ; i <= r ; ++i) tmp[i] = k;

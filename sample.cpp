@@ -560,9 +560,7 @@ namespace BotzoneIO
     {
 	// 读入输入（平台上的输入是单行）
 	string line;
-	ifstream fin("input.json", ios::in);
-	getline(fin, line);
-	fin.close();
+	getline(cin, line);
 	Json::Value input;
 	Json::Reader reader;
 	reader.parse(line, input);
@@ -661,9 +659,7 @@ namespace BotzoneIO
 	result["response"] = value;
 
 	Json::FastWriter writer;
-	ofstream fout("output.json");
-	fout << writer.write(result) << endl;
-	fout.close();
+	cout << writer.write(result) << endl;
     }
 
     /**
@@ -679,9 +675,7 @@ namespace BotzoneIO
 	result["response"] = response;
 
 	Json::FastWriter writer;
-	ofstream fout("output.json");
-	fout << writer.write(result) << endl;
-	fout.close();
+	cout << writer.write(result) << endl;
     }
 }
 

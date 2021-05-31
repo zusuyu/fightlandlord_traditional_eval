@@ -26,6 +26,7 @@ inline void write(string file, const Json::Value &v)
 
 const string NAME[3] = {"0", "1", "2"};
 string PLAYER[3] = {"sample", "sample", "sample"};
+bool is_Python[3];
 Json::Value dat = Json::objectValue;
 Json::Value input[3] = {Json::objectValue, Json::objectValue, Json::objectValue};
 Json::Value *requests[3] = {
@@ -96,7 +97,10 @@ void call_player(int i)
 {
     static char Cmd[300];
     write("input.json", input[i]);
-    system(("./" + PLAYER[i] + " <input.json >output.json").c_str());
+    if(is_Python[i])
+	system(("python3 " + PLAYER[i] + " <input.json >output.json").c_str());
+    else
+	system(("./" + PLAYER[i] + " <input.json >output.json").c_str());
     Json::Value &t = dat["log"][dat["log"].size()][NAME[i]];
     read("output.json", t);
     t["verdict"] = "OK";
@@ -122,6 +126,13 @@ int main(int argv, char **argc)
     PLAYER[0] = argc[1];
     PLAYER[1] = argc[2];
     PLAYER[2] = argc[3];
+    for(int i = 0; i < 3; ++i){
+	int l = PLAYER[i].length();
+	if(l >= 3)
+	    is_Python[i] = (PLAYER[i][l-3] == '.' && PLAYER[i][l-2] == 'p' && PLAYER[i][l-1] == 'y');
+	else
+	    is_Python[i] = 0;
+    }
     int turns = 1;
     if(argv == 5)
 	sscanf(argc[4], "%d", &turns);
