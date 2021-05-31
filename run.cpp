@@ -40,6 +40,7 @@ Json::Value *responses[3] = {
 };
 
 int player_point[3];
+int what_to_do;// BIDDING or PLAYING
 
 void init(){
     dat = Json::objectValue;
@@ -53,7 +54,7 @@ void init(){
 
 int call_judger()
 {
-    cout << "call_judger" << endl;
+//    cout << "call_judger" << endl;
     int nxt = 0;
     write("judgelogs.json", dat);
     system("python3 judge.py >jury_output.json");
@@ -66,6 +67,10 @@ int call_judger()
 	for (int i = 0; i < 3; i++)
 	    if (t["content"].isMember(NAME[i])) {
 		requests[i]->append(t["content"][NAME[i]]);
+		if(t["content"][NAME[i]].isMember("bid"))
+		    what_to_do = 0;
+		else
+		    what_to_do = 1;
 		nxt = i;
 	    }
     }
@@ -81,16 +86,31 @@ int call_judger()
     return nxt;
 }
 
+int getid(int c){
+    return c < 48 ? c / 4 : std::max(c - 51, 0) + 13;
+}
+static char *letter = "3456789TJQKA_2mM";
+
+
 void call_player(int i)
 {
-    cout << "call_player " << i << "(" << PLAYER[i] << ")" << endl;
     static char Cmd[300];
     write("input.json", input[i]);
-    system(("./" + PLAYER[i]).c_str());
+    system(("./" + PLAYER[i] + " <input.json >output.json").c_str());
     Json::Value &t = dat["log"][dat["log"].size()][NAME[i]];
     read("output.json", t);
     t["verdict"] = "OK";
     responses[i]->append(t["response"]);
+    if(what_to_do == 0){
+	printf("PLAYER %d bids:  %d\n", i, t["response"].asInt());
+    }
+    else{
+	printf("PLAYER %d plays: [", i);
+	for(unsigned i = 0; i < t["response"].size(); i++)
+	    putchar(letter[getid(t["response"][i].asInt())]);
+	putchar(']');
+	putchar('\n');
+    }
 }
 
 int main(int argv, char **argc)
@@ -109,14 +129,11 @@ int main(int argv, char **argc)
 	printf("GAME %d START!\n", i);
 	init();
 	call_judger();
-//	getchar();
 	int nxt = 0;
 	while (1)
 	{
 	    call_player(nxt);
-//	    getchar();
 	    nxt = call_judger();
-//	    getchar();
 	    if(nxt == -1)
 		break;
 	}
